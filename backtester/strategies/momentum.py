@@ -1,27 +1,28 @@
 from __future__ import annotations
 
-import numpy as np
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Optional
 
 from backtester.core.event import SignalEvent, Side
-from .base_strategy import BaseStrategy
 
 
 @dataclass
-class MomentumStrategy(BaseStrategy):
+class MomentumStrategy:
+    symbol: str
     lookback: int
 
-    def on_market(self, event) -> Iterable[SignalEvent]:
-        p = event.payload["close"]
-        h = event.meta.get("history", None) if event.meta else None
-        if h is None:
-            return []
-        x = h[-self.lookback:] if len(h) >= self.lookback else None
-        if x is None:
-            return []
-        r = np.sign(p - x[0])
-        if r > 0:
-            yield SignalEvent.of(self.symbol, event.ts, Side.LONG, 1.0)
-        elif r < 0:
-            yield SignalEvent.of(self.symbol, event.ts, Side.SHORT, 1.0)
+    def __post_init__(self):
+        self.prices = []
+
+    def on_bar(self, event) -> Optional[SignalEvent]:
+        self.prices.append(event.price)
+        if len(self.prices) < self.lookback:
+            return None
+        w = self.prices[-self.lookback:]
+        side = Side.LONG if w[-1] > w[0] else Side.SHORT
+        return SignalEvent(
+            symbol=self.symbol,
+            ts=event.ts,
+            side=side,
+            strength=1.0,
+        )

@@ -1,28 +1,33 @@
 from __future__ import annotations
 
-import numpy as np
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Optional
 
 from backtester.core.event import SignalEvent, Side
-from .base_strategy import BaseStrategy
 
 
 @dataclass
-class MeanReversionStrategy(BaseStrategy):
+class MeanReversionStrategy:
+    symbol: str
     lookback: int
     threshold: float
 
-    def on_market(self, event) -> Iterable[SignalEvent]:
-        p = event.payload["close"]
-        h = event.meta.get("history", None) if event.meta else None
-        if h is None:
-            return []
-        x = h[-self.lookback:] if len(h) >= self.lookback else None
-        if x is None:
-            return []
-        z = (p - np.mean(x)) / (np.std(x) + 1e-12)
-        if z > self.threshold:
-            yield SignalEvent.of(self.symbol, event.ts, Side.SHORT, abs(z))
-        elif z < -self.threshold:
-            yield SignalEvent.of(self.symbol, event.ts, Side.LONG, abs(z))
+    def __post_init__(self):
+        self.prices = []
+
+    def on_bar(self, event) -> Optional[SignalEvent]:
+        self.prices.append(event.price)
+        if len(self.prices) < self.lookback:
+            return None
+        w = self.prices[-self.lookback:]
+        mean = sum(w) / len(w)
+        dev = w[-1] - mean
+        if abs(dev) < self.threshold:
+            return None
+        side = Side.SHORT if dev > 0 else Side.LONG
+        return SignalEvent(
+            symbol=self.symbol,
+            ts=event.ts,
+            side=side,
+            strength=1.0,
+        )
