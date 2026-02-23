@@ -46,9 +46,38 @@ class MarketEvent(Event):
     ts: Any
     payload: Dict[str, Any]
 
+    def __init__(
+        self,
+        symbol: str,
+        ts: Any,
+        price: float = None,
+        payload: Dict[str, Any] = None,
+        kind: EventKind = EventKind.MARKET,
+    ):
+        # Backward compatibility for tests using price=
+        if payload is None:
+            if price is None:
+                raise ValueError("MarketEvent requires either price or payload")
+            payload = {
+                "open": price,
+                "high": price,
+                "low": price,
+                "close": price,
+                "volume": 0.0,
+            }
+
+        object.__setattr__(self, "kind", kind)
+        object.__setattr__(self, "symbol", symbol)
+        object.__setattr__(self, "ts", ts)
+        object.__setattr__(self, "payload", payload)
+
+    @property
+    def price(self) -> float:
+        return self.payload.get("close")
+
     @staticmethod
     def of(symbol: str, ts: Any, payload: Dict[str, Any]) -> "MarketEvent":
-        return MarketEvent(kind=EventKind.MARKET, symbol=symbol, ts=ts, payload=payload)
+        return MarketEvent(symbol=symbol, ts=ts, payload=payload)
 
 
 @dataclass(frozen=True)
@@ -58,9 +87,29 @@ class SignalEvent(Event):
     side: Side
     strength: float
 
+    def __init__(
+        self,
+        symbol: str,
+        ts: Any,
+        side: Side,
+        strength: float,
+        kind: EventKind = EventKind.SIGNAL,
+    ):
+        object.__setattr__(self, "kind", kind)
+        object.__setattr__(self, "symbol", symbol)
+        object.__setattr__(self, "ts", ts)
+        object.__setattr__(self, "side", side)
+        object.__setattr__(self, "strength", strength)
+
     @staticmethod
     def of(symbol: str, ts: Any, side: Side, strength: float) -> "SignalEvent":
-        return SignalEvent(kind=EventKind.SIGNAL, symbol=symbol, ts=ts, side=side, strength=strength)
+        return SignalEvent(
+            symbol=symbol,
+            ts=ts,
+            side=side,
+            strength=strength,
+            kind=EventKind.SIGNAL,
+        )
 
 
 @dataclass(frozen=True)
@@ -118,6 +167,28 @@ class FillEvent(Event):
     slippage: float = 0.0
     meta: Optional[Dict[str, Any]] = None
 
+    def __init__(
+        self,
+        symbol: str,
+        ts: Any,
+        side: Side,
+        quantity: int,
+        price: float,
+        commission: float,
+        slippage: float = 0.0,
+        meta: Optional[Dict[str, Any]] = None,
+        kind: EventKind = EventKind.FILL,
+    ):
+        object.__setattr__(self, "kind", kind)
+        object.__setattr__(self, "symbol", symbol)
+        object.__setattr__(self, "ts", ts)
+        object.__setattr__(self, "side", side)
+        object.__setattr__(self, "quantity", quantity)
+        object.__setattr__(self, "price", price)
+        object.__setattr__(self, "commission", commission)
+        object.__setattr__(self, "slippage", slippage)
+        object.__setattr__(self, "meta", meta)
+
     @property
     def gross(self) -> float:
         return self.price * self.quantity * (1 if self.side is Side.LONG else -1)
@@ -138,7 +209,6 @@ class FillEvent(Event):
         meta: Optional[Dict[str, Any]] = None,
     ) -> "FillEvent":
         return FillEvent(
-            kind=EventKind.FILL,
             symbol=symbol,
             ts=ts,
             side=side,
@@ -147,4 +217,5 @@ class FillEvent(Event):
             commission=commission,
             slippage=slippage,
             meta=meta,
+            kind=EventKind.FILL,
         )

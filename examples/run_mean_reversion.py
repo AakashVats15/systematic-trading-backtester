@@ -9,6 +9,7 @@ from backtester.core.portfolio import Portfolio
 from backtester.core.engine import Engine
 from backtester.strategies.mean_reversion import MeanReversionStrategy
 from backtester.reporting.report import Report
+from backtester.core.order_router import OrderRouter   # <-- ADDED
 
 
 def main():
@@ -17,11 +18,12 @@ def main():
     exec_handler = ExecutionHandler(slippage=0.0, commission=0.0)
     portfolio = Portfolio(cash=100000.0)
     strat = MeanReversionStrategy(symbol="TEST", lookback=20, threshold=1.0)
+    router = OrderRouter()                               # <-- ADDED
 
     engine = Engine(
         data=data,
         strategy=strat,
-        router=None,
+        router=router,                                   # <-- FIXED
         execution=exec_handler,
         portfolio=portfolio,
     )
