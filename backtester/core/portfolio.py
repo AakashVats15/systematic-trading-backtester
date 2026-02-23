@@ -11,7 +11,7 @@ class Portfolio:
     cash: float
     positions: Dict[str, int] = field(default_factory=dict)
     last_price: Dict[str, float] = field(default_factory=dict)
-    history: Dict[str, Any] = field(default_factory=lambda: {"equity": []})
+    history: Dict[str, Any] = field(default_factory=lambda: {"equity": [], "positions": []})
 
     def _update_position(self, symbol: str, qty: int, price: float, side: Side) -> None:
         s = 1 if side is Side.LONG else -1
@@ -33,6 +33,7 @@ class Portfolio:
         self._update_position(event.symbol, event.quantity, event.price, event.side)
         self._update_cash(event)
         self.history["equity"].append(self._equity())
+        self.history["positions"].append(dict(self.positions))
 
     def snapshot(self) -> Dict[str, Any]:
         return {
