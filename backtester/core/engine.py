@@ -13,7 +13,7 @@ class DataHandler(Protocol):
 
 
 class Strategy(Protocol):
-    def on_market(self, event: MarketEvent) -> Iterable[SignalEvent]: ...
+    def on_bar(self, event: MarketEvent) -> Optional[SignalEvent]: ...
 
 
 class OrderRouter(Protocol):
@@ -21,7 +21,7 @@ class OrderRouter(Protocol):
 
 
 class ExecutionHandler(Protocol):
-    def on_order(self, event: OrderEvent) -> Iterable[FillEvent]: ...
+    def execute(self, event: OrderEvent) -> Optional[FillEvent]: ...
 
 
 class Portfolio(Protocol):
@@ -56,7 +56,8 @@ class Engine:
             self._enqueue(m)
 
     def _dispatch_market(self, e: MarketEvent) -> None:
-        for s in self.strategy.on_market(e):
+        s = self.strategy.on_bar(e)
+        if isinstance(s, SignalEvent):
             self._enqueue(s)
 
     def _dispatch_signal(self, e: SignalEvent) -> None:
@@ -64,7 +65,8 @@ class Engine:
             self._enqueue(o)
 
     def _dispatch_order(self, e: OrderEvent) -> None:
-        for f in self.execution.on_order(e):
+        f = self.execution.execute(e)
+        if isinstance(f, FillEvent):
             self._enqueue(f)
 
     def _dispatch_fill(self, e: FillEvent) -> None:
@@ -77,13 +79,13 @@ class Engine:
         if e is None:
             return
         if e.kind is EventKind.MARKET:
-            self._dispatch_market(e)  # type: ignore[arg-type]
+            self._dispatch_market(e)
         elif e.kind is EventKind.SIGNAL:
-            self._dispatch_signal(e)  # type: ignore[arg-type]
+            self._dispatch_signal(e)
         elif e.kind is EventKind.ORDER:
-            self._dispatch_order(e)  # type: ignore[arg-type]
+            self._dispatch_order(e)
         elif e.kind is EventKind.FILL:
-            self._dispatch_fill(e)  # type: ignore[arg-type]
+            self._dispatch_fill(e)
 
     def run(self) -> dict:
         self._running = True
