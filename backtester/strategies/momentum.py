@@ -15,7 +15,8 @@ class MomentumStrategy:
         self.prices = []
 
     def on_bar(self, event) -> Optional[SignalEvent]:
-        self.prices.append(event.price)
+        price = event.payload["close"]
+        self.prices.append(price)
         if len(self.prices) < self.lookback:
             return None
         w = self.prices[-self.lookback:]
