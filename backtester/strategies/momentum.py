@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from backtester.core.event import SignalEvent, Side
+from backtester.core.event import SignalEvent, Side, EventKind
 
 
 @dataclass
@@ -22,6 +22,7 @@ class MomentumStrategy:
         w = self.prices[-self.lookback:]
         side = Side.LONG if w[-1] > w[0] else Side.SHORT
         return SignalEvent(
+            kind=EventKind.SIGNAL,
             symbol=self.symbol,
             ts=event.ts,
             side=side,

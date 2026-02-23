@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from backtester.core.event import SignalEvent, Side
+from backtester.core.event import SignalEvent, Side, EventKind
 
 
 @dataclass
@@ -27,6 +27,7 @@ class MeanReversionStrategy:
             return None
         side = Side.SHORT if dev > 0 else Side.LONG
         return SignalEvent(
+            kind=EventKind.SIGNAL,
             symbol=self.symbol,
             ts=event.ts,
             side=side,

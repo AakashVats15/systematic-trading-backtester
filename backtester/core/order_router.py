@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from .event import SignalEvent, OrderEvent, OrderType, Side
+from .event import SignalEvent, OrderEvent, OrderType, Side, EventKind
 
 
 @dataclass
@@ -13,12 +13,11 @@ class OrderRouter:
         if y <= 0:
             return []
         yield OrderEvent(
-            kind=OrderEvent.__mro__[1].kind,
+            kind=EventKind.ORDER,
             symbol=event.symbol,
             ts=event.ts,
             side=event.side,
             quantity=y,
             order_type=OrderType.MARKET,
             limit_price=None,
-            meta=event.meta,
         )
