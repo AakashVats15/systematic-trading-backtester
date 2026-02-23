@@ -13,27 +13,20 @@ class Portfolio:
     last_price: Dict[str, float] = field(default_factory=dict)
     history: Dict[str, Any] = field(default_factory=lambda: {"equity": [], "positions": []})
 
-    def _update_position(self, symbol: str, qty: int, price: float, side: Side) -> None:
-        s = 1 if side is Side.LONG else -1
-        self.positions[symbol] = self.positions.get(symbol, 0) + s * qty
-        self.last_price[symbol] = price
+    def __post_init__(self):
+        self.initial_cash = self.cash
 
-    def _update_cash(self, event: FillEvent) -> None:
-        self.cash -= event.net
+    def on_fill(self, fill: FillEvent):
+        symbol = fill.symbol
+        qty = fill.quantity if fill.side is Side.LONG else -fill.quantity
+        self.positions[symbol] = self.positions.get(symbol, 0) + qty
+        self.last_price[symbol] = fill.price
 
-    def _equity(self) -> float:
-        v = self.cash
-        for sym, qty in self.positions.items():
-            p = self.last_price.get(sym)
-            if p is not None:
-                v += qty * p
-        return v
+        position_value = self.positions[symbol] * fill.price
+        equity = self.initial_cash + position_value
 
-    def on_fill(self, event: FillEvent) -> None:
-        self._update_position(event.symbol, event.quantity, event.price, event.side)
-        self._update_cash(event)
-        self.history["equity"].append(self._equity())
-        self.history["positions"].append(self.positions.get(event.symbol, 0))  # <-- FIXED
+        self.history["equity"].append(equity)
+        self.history["positions"].append(self.positions.copy())
 
     def snapshot(self) -> Dict[str, Any]:
         return {
