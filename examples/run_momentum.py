@@ -4,7 +4,7 @@ import pandas as pd
 
 from backtester.data.synthetic import RandomWalk
 from backtester.data.loaders import DataFrameLoader
-from backtester.core.data_handler import DataHandler
+from backtester.core.data_handler import CSVDataHandler
 from backtester.core.execution import ExecutionHandler
 from backtester.core.portfolio import Portfolio
 from backtester.core.engine import Engine
@@ -15,7 +15,7 @@ from backtester.reporting.report import Report
 def main():
     df = RandomWalk(n=500, start=100.0, vol=1.0, seed=42).generate()
     loader = DataFrameLoader(df)
-    data = DataHandler(symbol="TEST", loader=loader)
+    data = CSVDataHandler(symbol="TEST", loader=loader)
     exec_handler = ExecutionHandler(slippage=0.0, commission=0.0)
     portfolio = Portfolio(cash=100000.0)
     strat = MomentumStrategy(symbol="TEST", lookback=20)
