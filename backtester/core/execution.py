@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Dict, Any
 
-from .event import OrderEvent, FillEvent, Side
+from .event import OrderEvent, FillEvent, Side, EventKind
 
 
 @dataclass
@@ -15,12 +15,13 @@ class ExecutionHandler:
         return float(payload["open"])
 
     def on_order(self, event: OrderEvent) -> Iterable[FillEvent]:
-        p = self._price(event.meta["payload"])
+        p = event.price if hasattr(event, "price") else 0.0
         s = self.slippage
         c = self.commission
         y = event.quantity
         side = event.side
-        yield FillEvent.of(
+        yield FillEvent(
+            kind=EventKind.FILL,
             symbol=event.symbol,
             ts=event.ts,
             side=side,
@@ -28,5 +29,7 @@ class ExecutionHandler:
             price=p + s if side is Side.LONG else p - s,
             commission=c,
             slippage=s,
-            meta=event.meta,
         )
+
+    def execute(self, event: OrderEvent) -> FillEvent:
+        return next(self.on_order(event))

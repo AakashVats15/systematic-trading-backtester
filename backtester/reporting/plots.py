@@ -35,17 +35,28 @@ class Plots:
         plt.tight_layout()
         plt.show()
 
-    def positions(self) -> None:
-        p = self.history.get("positions", [])
-        if not p:
-            return
+    def positions(self):
+        p = self.history["positions"]
+
+        # Single-asset: p is a list of ints
+        if isinstance(p[0], int):
+            plt.figure(figsize=(10, 4))
+            plt.plot(p, label="position")
+            plt.title("Positions")
+            plt.xlabel("Time")
+            plt.ylabel("Position")
+            plt.legend()
+            plt.show()
+            return self
+
+        # Multi-asset fallback (original behavior)
         keys = sorted({k for d in p for k in d})
-        t = np.arange(len(p))
         plt.figure(figsize=(10, 4))
         for k in keys:
-            y = [d.get(k, 0) for d in p]
-            plt.plot(t, y, label=k)
-        plt.legend()
+            plt.plot([d.get(k, 0) for d in p], label=k)
         plt.title("Positions")
-        plt.tight_layout()
+        plt.xlabel("Time")
+        plt.ylabel("Position")
+        plt.legend()
         plt.show()
+        return self

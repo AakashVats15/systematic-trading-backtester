@@ -33,7 +33,7 @@ class Portfolio:
         self._update_position(event.symbol, event.quantity, event.price, event.side)
         self._update_cash(event)
         self.history["equity"].append(self._equity())
-        self.history["positions"].append(dict(self.positions))
+        self.history["positions"].append(self.positions.get(event.symbol, 0))  # <-- FIXED
 
     def snapshot(self) -> Dict[str, Any]:
         return {
