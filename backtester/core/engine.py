@@ -13,7 +13,7 @@ class DataHandler(Protocol):
 
 
 class Strategy(Protocol):
-    def on_bar(self, event: MarketEvent) -> Optional[SignalEvent]: ...
+    def on_market(self, event: MarketEvent) -> Iterable[SignalEvent]: ...
 
 
 class OrderRouter(Protocol):
@@ -52,8 +52,8 @@ class Engine:
             self._enqueue(m)
 
     def _dispatch_market(self, e: MarketEvent) -> None:
-        s = self.strategy.on_market(e)
-        if isinstance(s, SignalEvent):
+        signals = self.strategy.on_market(e)
+        for s in signals:
             self._enqueue(s)
 
     def _dispatch_signal(self, e: SignalEvent) -> None:
