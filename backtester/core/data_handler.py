@@ -15,10 +15,11 @@ class CSVDataHandler:
     def __post_init__(self) -> None:
         df = pd.read_csv(self.path)
         df.columns = [c.lower() for c in df.columns]
-        self._ts = df.index
         self._df = df
+        self._ts = df.index
         self._i = 0
         self._n = len(df)
+        self._returns = df["close"].pct_change().fillna(0.0)
 
     def has_next(self) -> bool:
         return self._i < self._n
@@ -41,6 +42,14 @@ class CSVDataHandler:
         self._i += 1
         return MarketEvent.of(self.symbol, ts, payload)
 
+    def get_latest_mid_price(self, symbol: str) -> float:
+        r = self._df.iloc[max(self._i - 1, 0)]
+        return float((r["high"] + r["low"]) * 0.5)
+
+    def get_latest_volatility(self, symbol: str) -> float:
+        idx = max(self._i - 1, 0)
+        return float(abs(self._returns.iloc[idx]))
+
 
 @dataclass
 class DataFrameDataHandler:
@@ -50,10 +59,11 @@ class DataFrameDataHandler:
     def __post_init__(self) -> None:
         df = self.df.copy()
         df.columns = [c.lower() for c in df.columns]
-        self._ts = df.index
         self._df = df
+        self._ts = df.index
         self._i = 0
         self._n = len(df)
+        self._returns = df["close"].pct_change().fillna(0.0)
 
     def has_next(self) -> bool:
         return self._i < self._n
@@ -75,3 +85,11 @@ class DataFrameDataHandler:
         payload = self._slice()
         self._i += 1
         return MarketEvent.of(self.symbol, ts, payload)
+
+    def get_latest_mid_price(self, symbol: str) -> float:
+        r = self._df.iloc[max(self._i - 1, 0)]
+        return float((r["high"] + r["low"]) * 0.5)
+
+    def get_latest_volatility(self, symbol: str) -> float:
+        idx = max(self._i - 1, 0)
+        return float(abs(self._returns.iloc[idx]))

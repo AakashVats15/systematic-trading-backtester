@@ -3,33 +3,58 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Dict, Any
 
-from .event import OrderEvent, FillEvent, Side, EventKind
+from .event import OrderEvent, FillEvent, Side
+from backtester.utils.config import ExecutionConfig
 
 
 @dataclass
-class ExecutionHandler:
-    slippage: float = 0.0
-    commission: float = 0.0
+class RealisticExecutionModel:
+    spread_pct: float
+    proportional_commission_pct: float
+    fixed_commission: float
+    slippage_volatility_coeff: float
 
-    def _price(self, payload: Dict[str, Any]) -> float:
-        return float(payload["open"])
-
-    def on_order(self, event: OrderEvent) -> Iterable[FillEvent]:
-        p = event.price if hasattr(event, "price") else 0.0
-        s = self.slippage
-        c = self.commission
-        y = event.quantity
-        side = event.side
-        yield FillEvent(
-            kind=EventKind.FILL,
-            symbol=event.symbol,
-            ts=event.ts,
-            side=side,
-            quantity=y,
-            price=p + s if side is Side.LONG else p - s,
-            commission=c,
-            slippage=s,
+    @staticmethod
+    def from_config(cfg: ExecutionConfig) -> "RealisticExecutionModel":
+        return RealisticExecutionModel(
+            spread_pct=cfg.spread_pct,
+            proportional_commission_pct=cfg.proportional_commission_pct,
+            fixed_commission=cfg.fixed_commission,
+            slippage_volatility_coeff=cfg.slippage_volatility_coeff,
         )
 
-    def execute(self, event: OrderEvent) -> FillEvent:
-        return next(self.on_order(event))
+    def execute(
+        self,
+        order: OrderEvent,
+        mid_price: float,
+        volatility: float,
+    ) -> FillEvent:
+        direction = 1 if order.side is Side.LONG else -1
+
+        spread_price = mid_price * self.spread_pct
+        slippage_price = volatility * self.slippage_volatility_coeff * mid_price
+
+        fill_price = mid_price + direction * (spread_price + slippage_price)
+
+        notional = mid_price * order.quantity
+        commission_cost = (
+            self.proportional_commission_pct * notional
+            + self.fixed_commission
+        )
+
+        spread_cost = spread_price * order.quantity
+        slippage_cost = slippage_price * order.quantity
+        total_cost = commission_cost + spread_cost + slippage_cost
+
+        return FillEvent(
+            symbol=order.symbol,
+            ts=order.ts,
+            side=order.side,
+            quantity=order.quantity,
+            fill_price=fill_price,
+            commission_cost=commission_cost,
+            slippage_cost=slippage_cost,
+            spread_cost=spread_cost,
+            total_cost=total_cost,
+            meta={"mid_price": mid_price, "volatility": volatility},
+        )
