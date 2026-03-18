@@ -18,10 +18,7 @@ class Strategy(Protocol):
 
 class OrderRouter(Protocol):
     def on_signal(self, event: SignalEvent) -> Iterable[OrderEvent]: ...
-
-
-class ExecutionHandler(Protocol):
-    def execute(self, event: OrderEvent) -> Optional[FillEvent]: ...
+    def on_order(self, event: OrderEvent) -> FillEvent: ...
 
 
 class Portfolio(Protocol):
@@ -34,7 +31,6 @@ class Engine:
     data: DataHandler
     strategy: Strategy
     router: OrderRouter
-    execution: ExecutionHandler
     portfolio: Portfolio
 
     def __post_init__(self) -> None:
@@ -65,9 +61,8 @@ class Engine:
             self._enqueue(o)
 
     def _dispatch_order(self, e: OrderEvent) -> None:
-        f = self.execution.execute(e)
-        if isinstance(f, FillEvent):
-            self._enqueue(f)
+        f = self.router.on_order(e)
+        self._enqueue(f)
 
     def _dispatch_fill(self, e: FillEvent) -> None:
         self.portfolio.on_fill(e)
