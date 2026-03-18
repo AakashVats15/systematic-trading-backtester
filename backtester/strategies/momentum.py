@@ -1,30 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from backtester.core.event import SignalEvent, Side, EventKind
+from backtester.strategies.base_strategy import BaseStrategy
 
 
 @dataclass
-class MomentumStrategy:
-    symbol: str
-    lookback: int
+class MomentumStrategy(BaseStrategy):
+    lookback: int = 20
 
-    def __post_init__(self):
-        self.prices = []
-
-    def on_bar(self, event) -> Optional[SignalEvent]:
-        price = event.payload["close"]
-        self.prices.append(price)
+    def generate_signals(self, event):
         if len(self.prices) < self.lookback:
             return None
-        w = self.prices[-self.lookback:]
-        side = Side.LONG if w[-1] > w[0] else Side.SHORT
-        return SignalEvent(
-            kind=EventKind.SIGNAL,
-            symbol=self.symbol,
-            ts=event.ts,
-            side=side,
-            strength=1.0,
-        )
+
+        window = list(self.prices)[-self.lookback:]
+        if window[-1] > window[0]:
+            return self.long(event)
+        else:
+            return self.short(event)

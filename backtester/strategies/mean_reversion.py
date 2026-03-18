@@ -1,35 +1,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
-from backtester.core.event import SignalEvent, Side, EventKind
+from backtester.strategies.base_strategy import BaseStrategy
 
 
 @dataclass
-class MeanReversionStrategy:
-    symbol: str
-    lookback: int
-    threshold: float
+class MeanReversionStrategy(BaseStrategy):
+    lookback: int = 20
+    threshold: float = 0.0
 
-    def __post_init__(self):
-        self.prices = []
-
-    def on_bar(self, event) -> Optional[SignalEvent]:
-        price = event.payload["close"]
-        self.prices.append(price)
+    def generate_signals(self, event):
         if len(self.prices) < self.lookback:
             return None
-        w = self.prices[-self.lookback:]
-        mean = sum(w) / len(w)
-        dev = w[-1] - mean
-        if abs(dev) < self.threshold:
+
+        window = list(self.prices)[-self.lookback:]
+        mean = sum(window) / len(window)
+        deviation = window[-1] - mean
+
+        # No signal if deviation is too small
+        if abs(deviation) < self.threshold:
             return None
-        side = Side.SHORT if dev > 0 else Side.LONG
-        return SignalEvent(
-            kind=EventKind.SIGNAL,
-            symbol=self.symbol,
-            ts=event.ts,
-            side=side,
-            strength=1.0,
-        )
+
+        # If price is above mean → short
+        if deviation > 0:
+            return self.short(event)
+
+        # If price is below mean → long
+        return self.long(event)
