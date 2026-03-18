@@ -123,7 +123,13 @@ class OrderEvent(Event):
     meta: Optional[Dict[str, Any]] = None
 
     @staticmethod
-    def market(symbol: str, ts: Any, side: Side, quantity: int, meta: Optional[Dict[str, Any]] = None) -> "OrderEvent":
+    def market(
+        symbol: str,
+        ts: Any,
+        side: Side,
+        quantity: int,
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> "OrderEvent":
         return OrderEvent(
             kind=EventKind.ORDER,
             symbol=symbol,
@@ -156,15 +162,29 @@ class OrderEvent(Event):
         )
 
 
+# ============================================================
+# NEW COST-AWARE FILL EVENT
+# ============================================================
+
 @dataclass(frozen=True)
 class FillEvent(Event):
     symbol: str
     ts: Any
     side: Side
     quantity: int
-    price: float
-    commission: float
-    slippage: float = 0.0
+
+    # Execution price after spread + slippage
+    fill_price: float
+
+    # Cost components
+    commission_cost: float
+    slippage_cost: float
+    spread_cost: float
+
+    # Aggregated cost
+    total_cost: float
+
+    # Optional metadata
     meta: Optional[Dict[str, Any]] = None
 
     def __init__(
@@ -173,9 +193,11 @@ class FillEvent(Event):
         ts: Any,
         side: Side,
         quantity: int,
-        price: float,
-        commission: float,
-        slippage: float = 0.0,
+        fill_price: float,
+        commission_cost: float,
+        slippage_cost: float,
+        spread_cost: float,
+        total_cost: float,
         meta: Optional[Dict[str, Any]] = None,
         kind: EventKind = EventKind.FILL,
     ):
@@ -184,18 +206,26 @@ class FillEvent(Event):
         object.__setattr__(self, "ts", ts)
         object.__setattr__(self, "side", side)
         object.__setattr__(self, "quantity", quantity)
-        object.__setattr__(self, "price", price)
-        object.__setattr__(self, "commission", commission)
-        object.__setattr__(self, "slippage", slippage)
+
+        object.__setattr__(self, "fill_price", fill_price)
+
+        object.__setattr__(self, "commission_cost", commission_cost)
+        object.__setattr__(self, "slippage_cost", slippage_cost)
+        object.__setattr__(self, "spread_cost", spread_cost)
+        object.__setattr__(self, "total_cost", total_cost)
+
         object.__setattr__(self, "meta", meta)
 
     @property
     def gross(self) -> float:
-        return self.price * self.quantity * (1 if self.side is Side.LONG else -1)
+        """Value of the trade ignoring costs."""
+        direction = 1 if self.side is Side.LONG else -1
+        return self.fill_price * self.quantity * direction
 
     @property
     def net(self) -> float:
-        return self.gross - self.commission - self.slippage
+        """Value of the trade after all costs."""
+        return self.gross - self.total_cost
 
     @staticmethod
     def of(
@@ -203,9 +233,11 @@ class FillEvent(Event):
         ts: Any,
         side: Side,
         quantity: int,
-        price: float,
-        commission: float,
-        slippage: float = 0.0,
+        fill_price: float,
+        commission_cost: float,
+        slippage_cost: float,
+        spread_cost: float,
+        total_cost: float,
         meta: Optional[Dict[str, Any]] = None,
     ) -> "FillEvent":
         return FillEvent(
@@ -213,9 +245,11 @@ class FillEvent(Event):
             ts=ts,
             side=side,
             quantity=quantity,
-            price=price,
-            commission=commission,
-            slippage=slippage,
+            fill_price=fill_price,
+            commission_cost=commission_cost,
+            slippage_cost=slippage_cost,
+            spread_cost=spread_cost,
+            total_cost=total_cost,
             meta=meta,
             kind=EventKind.FILL,
         )
