@@ -52,7 +52,7 @@ class Engine:
             self._enqueue(m)
 
     def _dispatch_market(self, e: MarketEvent) -> None:
-        s = self.strategy.on_bar(e)
+        s = self.strategy.on_market(e)
         if isinstance(s, SignalEvent):
             self._enqueue(s)
 
