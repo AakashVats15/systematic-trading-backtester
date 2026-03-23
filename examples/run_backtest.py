@@ -24,7 +24,6 @@ def main():
     router = OrderRouter(data_handler=data, execution_model=execution)
     portfolio = Portfolio(cash=100000)
 
-    # IMPORTANT: TestStrategy now requires a symbol and optional lookback
     strategy = TestStrategy(symbol="TEST", lookback=5)
 
     engine = Engine(
@@ -37,7 +36,6 @@ def main():
     result = engine.run()
     print(result)
 
-    # Optional: print internal strategy state to verify rolling window logic
     print("Strategy state:", strategy.state)
 
 
